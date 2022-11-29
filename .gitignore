@@ -1,5 +1,7 @@
 #dont upload the database
 *.csv
+mongodb/
+esdata/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
