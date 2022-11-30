@@ -3,5 +3,6 @@ pandas
 jupyter
 notebook
 ipykernel
-elasticsearch
 pymongo
+elasticsearch
+python-dotenv
