@@ -3,6 +3,8 @@ pandas
 jupyter
 notebook
 ipykernel
+elasticsearch==7.17
 pymongo
-elasticsearch
 python-dotenv
+bcrypt
+flask
