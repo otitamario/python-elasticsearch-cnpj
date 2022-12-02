@@ -13,13 +13,13 @@ import requests
 load_dotenv()
 #Database CSV config
 dataset_est_csv = os.getenv("DATASET_EST_CSV")
-dataset_emp_csv = os.getenv("DATASET_EMP_CSV")
+dataset_mun_csv = os.getenv("DATASET_MUN_CSV")
 
 # Mongodb Config
+mongo_uri=os.getenv("MONGO_URI")
 mongo_username=os.getenv("MONGO_INITDB_ROOT_USERNAME")
 mongo_password=os.getenv("MONGO_INITDB_ROOT_PASSWORD")
 db_database = os.getenv("DB_DATABASE")
-db_emp_collection = os.getenv("DB_EMP_COLLECTION")
 db_est_collection = os.getenv("DB_EST_COLLECTION")
 
 # Elasticsearch Config
@@ -27,74 +27,142 @@ es_host = os.getenv("ELASTICSEARCH_URI")
 es = Elasticsearch([es_host])
 es_index = os.getenv("ELASTICSEARCH_INDEX")
 
-
-
-
-
 # Connect to MongoDB
-
-client = MongoClient('mongodb://localhost:27017/',
-                  username=mongo_username,
-                 password=mongo_password)
-
-#client =  MongoClient("mongodb+srv://<<YOUR USERNAME>>:<<PASSWORD>>@clustertest-icsum.mongodb.net/test?retryWrites=true&w=majority")
-db = client[db_database]
+mongodb_client = MongoClient(mongo_uri,username=mongo_username,password=mongo_password)
+db = mongodb_client[db_database]
 collection_est = db[db_est_collection]
 
 
-
-
-
-def extract():
-    '''for chunk in pd.read_csv('Estabelecimentos2.csv', sep = ';', encoding = "ISO-8859-1", chunksize=100):
-    print(chunk.head())'''
-    columns_emp = ['CNPJ BÁSICO','RAZÃO SOCIAL','NATUREZA JURÍDICA','QUALIFICAÇÃO DO RESPONSÁVEL',
-    'CAPITAL SOCIAL DA EMPRESA','PORTE DA EMPRESA','ENTE FEDERATIVO RESPONSÁVEL'
-    ]
+def extract(total=100000):
     columns_est = ['CNPJ BÁSICO','CNPJ ORDEM','CNPJ DV','IDENTIFICADOR MATRIZ/FILIAL','NOME FANTASIA',
     'SITUAÇÃO CADASTRAL','DATA SITUAÇÃO CADASTRAL','MOTIVO SITUAÇÃO CADASTRAL',
     'NOME DA CIDADE NO EXTERIOR','PAIS','DATA DE INÍCIO ATIVIDADE',
     'CNAE FISCAL PRINCIPAL','CNAE FISCAL SECUNDÁRIA','TIPO DE LOGRADOURO',
-    'LOGRADOURO','NÚMERO','COMPLEMENTO','BAIRRO','CEP','UF','MUNICÍPIO',
+    'LOGRADOURO','NÚMERO','COMPLEMENTO','BAIRRO','CEP','UF','CÓDIGO_MUN',
     'DDD 1','TELEFONE 1','DDD 2','TELEFONE 2','DDD DO FAX','FAX',
     'CORREIO ELETRÔNICO','SITUAÇÃO ESPECIAL','DATA DA SITUAÇÃO ESPECIAL'
     ]
-    count = 0
-    chunksize=10000
-    for data in pd.read_csv(dataset_est_csv, sep = ';', encoding = "ISO-8859-1", na_filter=False, names=columns_est,iterator=True,chunksize=chunksize):
-        count += 1
-        print(f"saving up {count*10000}")
-        data.reset_index(inplace=True)
-        data_dict = data.to_dict("records")
-        # Insert collection
-        collection_est.insert_many(data_dict)
+    columns_mun = ['CÓDIGO_MUN','MUNICÍPIO'] 
+    df_est = pd.DataFrame()
+    step=10000
+    added=0
+    i=0
+    for chunk in pd.read_csv(dataset_est_csv, sep = ';', encoding = "ISO-8859-1",header=None,na_filter=False,names=columns_est,chunksize=step):
+        i += 1
+        print(f"saving data cnpj up {i*step}")
+        nulos = chunk['NOME FANTASIA'].isna().sum()
+        print(f'nulos: {nulos}')
+        chunk.dropna(subset=['NOME FANTASIA'],inplace=True)
+        new = step - nulos
+        if added + new > total:
+            new = total - added
+            df_est = pd.concat([df_est,chunk.head(new)])
+        else:
+            df_est = pd.concat([df_est,chunk])
+        added += new
+        if(added==total):
+            break
         
+    df_est.reset_index(drop=True, inplace=True)
+
+    df_mun = pd.DataFrame()
+    step=1000
+    i=0
+    for chunk in pd.read_csv(dataset_mun_csv, sep = ';', encoding = "ISO-8859-1",header=None,na_filter=False,names=columns_mun,chunksize=step):
+        i += 1
+        print(f"saving municipios up {i*step}")
+        df_mun = pd.concat([df_mun,chunk])
+            
+    df_mun.reset_index(drop=True, inplace=True)
+
+    data = df_est.merge(df_mun, on='CÓDIGO_MUN', how='left')
+    columns_drop = ['DDD 2','TELEFONE 2','DDD DO FAX','FAX',
+                    'SITUAÇÃO ESPECIAL','DATA DA SITUAÇÃO ESPECIAL',
+                    'NOME DA CIDADE NO EXTERIOR','PAIS'
+    ]
+    data.drop(columns_drop, axis=1, inplace=True)
+    '''data['CEP'] = data['CEP'].astype('Int64')
+    data['DDD 1'] = data['DDD 1'].astype('Int64')
+    data['TELEFONE 1'] = data['TELEFONE 1'].astype('Int64')'''
+    data.reset_index(inplace=True)
+    data_dict = data.to_dict("records")
+    # Insert collection on mongodb
+    collection_est.insert_many(data_dict)
     
-    #data = pd.read_csv(dataset_est_csv, sep = ';', encoding = "ISO-8859-1", nrows= 20, header=None, na_filter=False, names=columns_est)
-    #data.reset_index(inplace=True)
-    #data_dict = data.to_dict("records")
-    # Insert collection
-    #collection.insert_many(data_dict)
-    #df_cd = pd.merge(df_SN7577i_c, df_SN7577i_d, how='inner', on = 'Id')
+    
 
-
-def migrate():
-  res = collection.find()
-  # number of docs to migrate
-  num_docs = 20
+'''def migrate(num_docs = 100000):
+  res = collection_est.find()
+  
   actions = []
   for i in range(num_docs):
       doc = res[i]
       mongo_id = doc['_id']
-      print('mongo_id: ',mongo_id)
+      print(f"mongo_id: {mongo_id}, doc #: {i+1}",)
       doc.pop('_id', None)
       actions.append({
           "_index": es_index,
           "_id": str(mongo_id),
           "_source": json.dumps(doc)
       })
-  res = helpers.bulk(es, actions)
+  response = helpers.bulk(es, actions)
   
+'''
+'''
+def migrate(num_docs=100000):
+  res = collection_est.find()
+  for i in range(num_docs):
+      doc = res[i]
+      mongo_id = doc['_id']
+      print(f"ES sending doc #: {i+1}",)
+      doc.pop('_id', None)
+      actions =[{
+          "_index": es_index,
+          "_id": str(mongo_id),
+          "_source": json.dumps(doc)
+      }]
+      response = helpers.bulk(es, actions)
+'''  
+def _doc_to_json(doc):
+        doc_str = json.dumps(doc, default=str)
+        doc_json = json.loads(doc_str)
+        return doc_json
 
-#migrate()
+def migrate(limit=100000,chunk_size=10000):
+    no_docs = 0
+    offset = 0
+    print("Starting ES upload")
+    while True:
+        mongo_cursor = collection_est.find()
+        mongo_cursor.skip(offset)
+        mongo_cursor.limit(chunk_size)
+        docs = list(mongo_cursor)
+        # break loop if no more documents found
+        if not len(docs):
+            break
+        # convert document to json to avoid SerializationError
+        docs = [_doc_to_json(doc) for doc in docs]
+        actions = []
+        for doc in docs:
+            mongo_id = doc['_id']
+            #print(f"mongo_id: {mongo_id}",)
+            doc.pop('_id', None)
+            actions.append({
+                "_index": es_index,
+                "_id": str(mongo_id),
+                "_source": json.dumps(doc)
+            })
+        response = helpers.bulk(es, actions)
+        # check for number of documents limit, stop if exceed
+        no_docs += len(docs)
+        print(f"Es total docs: {no_docs}",)
+        if no_docs >=limit:
+            print("Finishing ES upload.")
+            break
+            # update offset to fetch next chunk/page
+        offset += chunk_size
+
+
+
 extract()
+migrate()
