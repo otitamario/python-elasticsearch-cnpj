@@ -25,6 +25,7 @@ docker run -d --name tera_kibana --net mongo-els --restart=always -p 5601:5601 -
 docker compose up -d
 
 <h4>Extract and Load data to mongodb and elasticsearch<h4>
+
 python etl.py
 
 
