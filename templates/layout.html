@@ -16,6 +16,18 @@
 </head>
 
 <body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+        {% if session['username'] %}
+        <h6>Olá  {{session['username']}}</h6>
+        <form class="form-inline my-2 my-lg-0" method="post" action="{{ url_for('logout') }}">
+            <button class="btn btn btn-danger padding-x my-2 my-sm-0" type="submit">Logout</button>
+          </form>      
+        {%else %}  
+        <h4>Favor fazer Login ou Registrar-se</h4>
+        {% endif %}
+    </div>   
+        </nav>
 
     {% block body %}{% endblock %}
 

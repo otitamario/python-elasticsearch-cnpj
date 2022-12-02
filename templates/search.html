@@ -1,0 +1,72 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="container">
+    
+    <form method="post" action="{{ url_for('search') }}">
+        <div class="form-group">
+          <label for="CnpjInput">CNPJ</label>
+          <input type="text" class="form-control" id="CnpjInput" name="cnpj" placeholder="Digite o CNPJ básico somente números">
+         </div>
+        <div class="form-group">
+          <label for="RazaoSocialInput">Razão Social</label>
+          <input type="text" class="form-control" id="RazaoSocialInput" name="razaosocial" placeholder="Razão Social">
+        </div>
+        <div class="form-group">
+            <label for="EnderecoInput">Endereço</label>
+            <input type="text" class="form-control" id="EnderecoInput" name="endereco" placeholder="Endereço">
+          </div>
+          
+          <div class="form-group">
+            <label for="TelefoneInput">Telefone</label>
+            <input type="text" class="form-control" id="TelefoneInput" name="telefone" placeholder="Telefone">
+          </div>
+        
+
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </form>
+
+      
+      <div class="table-responsive">
+        <table class="table table-bordered table-dark table-striped">
+            <thead class="thead-dark">
+                <tr>
+                  <th scope="col">CNPJ</th>
+                  <th scope="col">NOME FANTASIA</th>
+                  <th scope="col">ENDEREÇO</th>
+                  <th scope="col">TELEFONE</th>
+                </tr>
+              </thead>
+            <tbody>
+                {% for item in data %}
+                <tr> 
+                    <td>{{
+                        item["_source"]["CNPJ BÁSICO"]}}{{"/000"}}
+                        {{item["_source"]["CNPJ ORDEM"]}}{{"-"}}
+                        {{item["_source"]["CNPJ DV"]
+                    }}</td>
+                    <td>{{item["_source"]["NOME FANTASIA"]}}</td>
+                    <td>{{item["_source"]["TIPO DE LOGRADOURO"]+" "+
+                        item["_source"]["LOGRADOURO"]+", NÚMERO: "+
+                        item["_source"]["NÚMERO"]+", COMPLEMENTO: "+
+                        item["_source"]["COMPLEMENTO"]+", BAIRRO: "+
+                        item["_source"]["BAIRRO"]+", CEP: "+
+                        item["_source"]["CEP"]+", "+
+                        item["_source"]["MUNICÍPIO"]+" - "+
+                        item["_source"]["UF"]
+                    }} 
+                    </td>
+                    <td>{{"("+item["_source"]["DDD 1"]+")"+" "+item["_source"]["TELEFONE 1"]}}</td>
+                  </tr>
+                {% endfor %}
+            </tbody>    
+        
+        </table>
+      </div>
+
+      
+
+</div>
+
+
+
+{% endblock %}
