@@ -4,6 +4,7 @@ services:
   mongo:
     container_name: tera_mongo
     image: mongo
+    restart: always 
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: mongo
@@ -18,6 +19,7 @@ services:
   mongo-express:
     container_name: tera_mongo_express
     image: mongo-express
+    restart: always
     ports:
       - "8081:8081"
     environment:
