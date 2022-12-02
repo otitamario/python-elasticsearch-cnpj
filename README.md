@@ -1,5 +1,16 @@
 # python-elasticsearch-cnpj
 
+<h4>CSV Databases</h4>
+We need 2 csv databases download at <a href="https://dados.gov.br/dados/conjuntos-dados/cadastro-nacional-da-pessoa-juridica-cnpj">https://dados.gov.br/dados/conjuntos-dados/cadastro-nacional-da-pessoa-juridica-cnpj</a>:<br>
+<ul>
+<li>Download the database of municipios, need to get the names of each município</li>
+<li>Choose one Estabelecimento database. I have choosed the Estabelecimentos3 database</li>
+
+</ul>
+
+You will need to inform these database names on the enviroment file.
+
+
 <h4>Virtual enviroment and install dependencies</h4>
 Creat a virtual enviroment:<br>
 python3 -m venv .venv <br>
