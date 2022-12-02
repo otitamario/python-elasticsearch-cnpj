@@ -19,7 +19,9 @@ dataset_emp_csv = os.getenv("DATASET_EMP_CSV")
 mongo_username=os.getenv("MONGO_INITDB_ROOT_USERNAME")
 mongo_password=os.getenv("MONGO_INITDB_ROOT_PASSWORD")
 db_database = os.getenv("DB_DATABASE")
-db_collection = os.getenv("DB_COLLECTION")
+db_emp_collection = os.getenv("DB_EMP_COLLECTION")
+db_est_collection = os.getenv("DB_EST_COLLECTION")
+
 # Elasticsearch Config
 es_host = os.getenv("ELASTICSEARCH_URI")
 es = Elasticsearch([es_host])
@@ -37,7 +39,7 @@ client = MongoClient('mongodb://localhost:27017/',
 
 #client =  MongoClient("mongodb+srv://<<YOUR USERNAME>>:<<PASSWORD>>@clustertest-icsum.mongodb.net/test?retryWrites=true&w=majority")
 db = client[db_database]
-collection = db[db_collection]
+collection_est = db[db_est_collection]
 
 
 
@@ -58,13 +60,14 @@ def extract():
     'CORREIO ELETRÔNICO','SITUAÇÃO ESPECIAL','DATA DA SITUAÇÃO ESPECIAL'
     ]
     count = 0
-    for data in pd.read_csv(dataset_est_csv, sep = ';', encoding = "ISO-8859-1", na_filter=False, names=columns_est,iterator=True,chunksize=1000):
+    chunksize=10000
+    for data in pd.read_csv(dataset_est_csv, sep = ';', encoding = "ISO-8859-1", na_filter=False, names=columns_est,iterator=True,chunksize=chunksize):
         count += 1
-        print(f"saving up {count*1000}")
+        print(f"saving up {count*10000}")
         data.reset_index(inplace=True)
         data_dict = data.to_dict("records")
         # Insert collection
-        collection.insert_many(data_dict)
+        collection_est.insert_many(data_dict)
         
     
     #data = pd.read_csv(dataset_est_csv, sep = ';', encoding = "ISO-8859-1", nrows= 20, header=None, na_filter=False, names=columns_est)
